@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
-import 'screens/dashboard_screen.dart';
+import 'screens/home_screen.dart';
 
 void main() {
   runApp(const DopamineTaxApp());
@@ -13,10 +13,11 @@ class DopamineTaxApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Dopamine Tax',
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      home: const DashboardScreen(),
+      home: const HomeScreen(),
     );
   }
 }
