@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
+import 'providers/app_state.dart';
 
 void main() {
-  runApp(const DopamineTaxApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AppState(),
+      child: const DopamineTaxApp(),
+    ),
+  );
 }
 
 class DopamineTaxApp extends StatelessWidget {

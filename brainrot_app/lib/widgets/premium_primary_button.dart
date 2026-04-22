@@ -25,6 +25,10 @@ class PremiumPrimaryButton extends StatefulWidget {
   /// Foreground (text/icon) colour override.
   final Color? foregroundColor;
 
+  /// If set, renders an outlined (ghost) button with this border color
+  /// and a transparent background.
+  final Color? borderColor;
+
   const PremiumPrimaryButton({
     super.key,
     required this.label,
@@ -32,6 +36,7 @@ class PremiumPrimaryButton extends StatefulWidget {
     this.icon,
     this.backgroundColor,
     this.foregroundColor,
+    this.borderColor,
   });
 
   @override
@@ -94,6 +99,8 @@ class _PremiumPrimaryButtonState extends State<PremiumPrimaryButton>
     final bg = widget.backgroundColor ?? theme.colorScheme.primary;
     final fg = widget.foregroundColor ?? theme.colorScheme.onPrimary;
 
+    final bool isOutlined = widget.borderColor != null;
+
     return GestureDetector(
       onTapDown: _handleTapDown,
       onTapUp: _handleTapUp,
@@ -107,8 +114,11 @@ class _PremiumPrimaryButtonState extends State<PremiumPrimaryButton>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
             decoration: BoxDecoration(
-              color: bg,
+              color: isOutlined ? Colors.transparent : bg,
               borderRadius: BorderRadius.circular(100), // stadium
+              border: isOutlined
+                  ? Border.all(color: widget.borderColor!, width: 1.5)
+                  : null,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -118,13 +128,18 @@ class _PremiumPrimaryButtonState extends State<PremiumPrimaryButton>
                   Icon(widget.icon, color: fg, size: 20),
                   const SizedBox(width: 10),
                 ],
-                Text(
-                  widget.label,
-                  style: TextStyle(
-                    color: fg,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.2,
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      widget.label,
+                      style: TextStyle(
+                        color: fg,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
                   ),
                 ),
               ],

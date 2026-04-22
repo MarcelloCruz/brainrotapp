@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Dopamine Tax monitors which apps you open to track your daily screen-time allowance and trigger the block overlay when your limit is reached.</string>
+</resources>
