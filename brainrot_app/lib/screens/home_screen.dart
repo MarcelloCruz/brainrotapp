@@ -8,6 +8,7 @@ import '../widgets/dashboard_card.dart';
 import '../widgets/frosted_glass_overlay.dart';
 import '../widgets/premium_primary_button.dart';
 import 'wallet_screen.dart';
+import 'settings_screen.dart';
 
 /// Minimalist home screen for Dopamine Tax.
 ///
@@ -199,16 +200,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             children: [
               const SizedBox(height: 16),
 
-              // ── Top Right Wallet Icon ──
+              // ── Top Right Icons ──
               Align(
                 alignment: Alignment.centerRight,
-                child: IconButton(
-                  icon: const Icon(CupertinoIcons.creditcard, size: 28),
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      CupertinoPageRoute(builder: (_) => const WalletScreen()),
-                    );
-                  },
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(CupertinoIcons.creditcard, size: 28),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(
+                            builder: (_) => const WalletScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(CupertinoIcons.gear_solid, size: 28),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(
+                            builder: (_) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 16),

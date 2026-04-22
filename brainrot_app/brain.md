@@ -85,6 +85,12 @@
 - Walk Away button calls `NativeBridge.goHome()` (sends user to the Android home screen).
 - `flutter analyze` — zero issues.
 
+### Developer Debug Reset (Completed)
+- Added `resetDebugState()` to `AppState` — clears `isUnlockedForToday`, resets `timeUsedMins = 60`, and persists `false` to SharedPreferences.
+- Created `lib/screens/settings_screen.dart` with Tax Amount display and a red "Developer: Reset App State" button.
+- Added gear icon (`CupertinoIcons.gear_solid`) to home screen top-right bar, navigating to `SettingsScreen` via `CupertinoPageRoute`.
+- `flutter analyze` — zero issues.
+
 ### Next Steps
 - Add YouTube Shorts (`com.google.android.youtube`) to the blocked packages list.
 - Implement usage-time tracking inside `AppMonitorService` (start/stop timer per monitored package).

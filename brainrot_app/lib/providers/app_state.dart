@@ -21,7 +21,7 @@ class AppState extends ChangeNotifier {
   double _walletBalance = 10.00;
   bool _isUnlockedForToday = false;
   final int _dailyAllowanceMins = 60;
-  final int _timeUsedMins = 60;
+  int _timeUsedMins = 60;
 
   final List<TransactionItem> _recentActivity = [
     TransactionItem(
@@ -94,5 +94,14 @@ class AppState extends ChangeNotifier {
       ),
     );
     notifyListeners();
+  }
+
+  Future<void> resetDebugState() async {
+    _isUnlockedForToday = false;
+    _timeUsedMins = 60;
+    notifyListeners();
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool("isUnlockedForToday", false);
   }
 }
