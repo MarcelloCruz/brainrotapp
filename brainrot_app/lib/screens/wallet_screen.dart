@@ -16,6 +16,7 @@ class WalletScreen extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(CupertinoIcons.back),
@@ -40,7 +41,7 @@ class WalletScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '\$${state.walletBalance.toStringAsFixed(2)}',
+                state.formatPrice(state.walletBalance),
                 style: theme.textTheme.displayLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                   fontSize: 56,
@@ -61,11 +62,11 @@ class WalletScreen extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _TopUpPill(amount: 5, isDark: isDark),
+                  _TopUpPill(amount: state.taxAmount * 10, currencySymbol: state.currencySymbol, isDark: isDark),
                   const SizedBox(width: 12),
-                  _TopUpPill(amount: 10, isDark: isDark),
+                  _TopUpPill(amount: state.taxAmount * 20, currencySymbol: state.currencySymbol, isDark: isDark),
                   const SizedBox(width: 12),
-                  _TopUpPill(amount: 20, isDark: isDark),
+                  _TopUpPill(amount: state.taxAmount * 40, currencySymbol: state.currencySymbol, isDark: isDark),
                 ],
               ),
               const SizedBox(height: 24),
@@ -93,7 +94,7 @@ class WalletScreen extends StatelessWidget {
               ...state.recentActivity.map(
                 (t) => _TransactionItem(
                   amount:
-                      '${t.isPositive ? '+' : '-'}\$${t.amount.toStringAsFixed(2)}',
+                      '${t.isPositive ? '+' : '-'}${state.formatPrice(t.amount)}',
                   isPositive: t.isPositive,
                   title: t.title,
                   subtitle: t.subtitle,
@@ -111,17 +112,18 @@ class WalletScreen extends StatelessWidget {
 }
 
 class _TopUpPill extends StatelessWidget {
-  final int amount;
+  final double amount;
+  final String currencySymbol;
   final bool isDark;
 
-  const _TopUpPill({required this.amount, required this.isDark});
+  const _TopUpPill({required this.amount, required this.currencySymbol, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: InkWell(
         onTap: () {
-          context.read<AppState>().addFunds(amount.toDouble());
+          context.read<AppState>().addFunds(amount);
         },
         borderRadius: BorderRadius.circular(100),
         child: Container(
@@ -134,7 +136,7 @@ class _TopUpPill extends StatelessWidget {
           ),
           child: Center(
             child: Text(
-              '\$$amount',
+              '$currencySymbol${amount % 1 == 0 ? amount.toInt() : amount.toStringAsFixed(2)}',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,

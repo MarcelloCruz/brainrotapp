@@ -91,6 +91,44 @@
 - Added gear icon (`CupertinoIcons.gear_solid`) to home screen top-right bar, navigating to `SettingsScreen` via `CupertinoPageRoute`.
 - `flutter analyze` — zero issues.
 
+### Transparent Overlay Fix (Completed)
+- **Root cause**: The Flutter app was painting a solid opaque background instead of being transparent when launched as an overlay over TikTok.
+- **Android themes**: Both `LaunchTheme` and `NormalTheme` in `values/styles.xml` and `values-night/styles.xml` were forced to transparent (`android:windowIsTranslucent=true`, `android:windowBackground=@android:color/transparent`, `android:colorBackgroundCacheHint=@null`).
+- **MaterialApp**: Added `color: Colors.transparent` to the root `MaterialApp` in `lib/main.dart`.
+- **OverlayScreen**: Changed `Scaffold(backgroundColor: Colors.black87)` → `Scaffold(backgroundColor: Colors.transparent)` and wrapped the body in `FrostedGlassOverlay` for a proper blur effect over the underlying app.
+- **Key lesson**: Every layer in the stack (Android Activity theme → Flutter MaterialApp → Scaffold) must explicitly be transparent; any single opaque layer kills the overlay effect.
+- `flutter analyze` — zero issues.
+
+### Screen Isolation & Opaque Home Screen (Completed)
+- Isolated the app blocked UI into `FrostedGlassOverlay` widget.
+- Stripped `OverlayScreen` of any duplicated Home Screen elements, retaining strictly the `FrostedGlassOverlay`.
+- Set `HomeScreen` `Scaffold` `backgroundColor` to `theme.scaffoldBackgroundColor` making it explicitly opaque so the app behaves like a normal app when launched from the app drawer.
+
+### Dynamic Localized Pricing & Smart Rounding (Completed)
+- Created `lib/services/pricing_service.dart` — base price €0.50 with mock exchange rates (USD, GBP, RON, AUD, JPY) and smart rounding (nearest 0.50 for standard currencies, nearest 50 for large-value currencies like JPY).
+- `AppState` now auto-detects device locale via `Platform.localeName`, derives currency code, symbol (via `intl` package), and local tax amount on construction.
+- Stripped **all hardcoded `$` and `2.00`** from `frosted_glass_overlay.dart`, `wallet_screen.dart`, `dashboard_card.dart`, and `settings_screen.dart` — replaced with `state.formatPrice()` and `state.taxAmount`.
+- Wallet top-up pills now scale dynamically (10×, 20×, 40× tax amount).
+- Mock transactions in `AppState` use localized amounts. Initial wallet balance set to 20× tax for usability.
+- `flutter analyze` — zero errors.
+
+### Home Screen Production Overhaul (Completed)
+- Nuked demo artifacts (`Preview App Block` button).
+- Redesigned `DashboardCard` to include a visually intuitive `LinearProgressIndicator` below the "Daily Allowance Used" text. Colors adapt based on progress (<50% green, 50-99% yellow, 100% red).
+- Added a new "Target Apps" section below the dashboard with a premium list of monitored apps (TikTok, Instagram, YouTube) and individual `CupertinoSwitch` toggles.
+- Wired switches to a new `trackedApps` map inside `AppState`.
+- Refined the permission banner: it now displays a subtle, green "Shield Active" pill when the accessibility permission is granted, and the red "Action Required" banner when missing.
+
+### Premium Dark Glassmorphism Aesthetic (Completed)
+- Overhauled UI design language to match the landing page.
+- Forced `ThemeMode.dark` as the primary identity in `lib/main.dart`.
+- Updated `AppTheme` palette: Deep Midnight Blue background (`#0D0D16`), Vibrant Neon Blue accent (`#1D4ED8`), and Neon Green (`#39FF14`) for success indicators.
+- Updated headers to use a heavy `FontWeight.w800` to match landing page typography.
+- Replaced `HomeScreen` solid background with a subtle linear gradient giving depth.
+- Converted `DashboardCard` and `TargetAppsList` to premium glassmorphic cards (translucent dark background with a subtle white border and high border radius).
+- Re-styled the `LinearProgressIndicator` to use a rounded thick bar with a neon green glow.
+- Modernized `PermissionBanner` with a sleek dark card and thin glowing red border.
+
 ### Next Steps
 - Add YouTube Shorts (`com.google.android.youtube`) to the blocked packages list.
 - Implement usage-time tracking inside `AppMonitorService` (start/stop timer per monitored package).

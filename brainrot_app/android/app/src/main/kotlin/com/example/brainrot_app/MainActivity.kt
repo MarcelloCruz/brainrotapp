@@ -4,10 +4,22 @@ import android.content.Intent
 import android.provider.Settings
 import android.text.TextUtils
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterActivityLaunchConfigs.BackgroundMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+
+    override fun getBackgroundMode(): BackgroundMode {
+        return BackgroundMode.transparent
+    }
+
+    override fun getInitialRoute(): String {
+        if (intent?.action == "com.dopaminetax.BLOCK") {
+            return "/block"
+        }
+        return super.getInitialRoute() ?: "/"
+    }
 
     private val CHANNEL = "com.dopaminetax/native"
 

@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 
+
 /// A minimal Settings screen following the Apple-like design language.
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -10,9 +11,11 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final state = context.watch<AppState>();
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(CupertinoIcons.back),
@@ -61,7 +64,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '\$2.00',
+                      state.formatPrice(state.taxAmount),
                       style: theme.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),

@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/native_bridge.dart';
 import '../widgets/dashboard_card.dart';
-import '../widgets/frosted_glass_overlay.dart';
-import '../widgets/premium_primary_button.dart';
 import 'wallet_screen.dart';
 import 'settings_screen.dart';
 
@@ -50,149 +47,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) setState(() => _hasPermission = granted);
   }
 
-  void _showBlockOverlay(BuildContext context) {
-    final theme = Theme.of(context);
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.transparent,
-      pageBuilder: (context2, animation1, animation2) {
-        return FrostedGlassOverlay(
-          onDismiss: () => Navigator.of(context).pop(),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 36),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ── Lock icon ──
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      CupertinoIcons.lock_fill,
-                      color: Colors.white,
-                      size: 36,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // ── Title ──
-                  Text(
-                    'App Blocked',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // ── Subtitle ──
-                  Text(
-                    'Daily limit (1h) reached.\nPay the tax or walk away.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white70,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-
-                  // ── Pay button (primary action) ──
-                  SizedBox(
-                    width: double.infinity,
-                    child: PremiumPrimaryButton(
-                      label: 'Pay \$2.00 (Unlocks till midnight)',
-                      icon: CupertinoIcons.creditcard,
-                      onPressed: () async {
-                        final state = context.read<AppState>();
-                        if (state.walletBalance >= 2.00) {
-                          await state.payTax();
-                          if (context.mounted) {
-                            SystemNavigator.pop();
-                          }
-                        } else {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Insufficient Funds. Please top up.',
-                                ),
-                                backgroundColor: Colors.redAccent,
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // ── Walk Away button (outlined / secondary) ──
-                  SizedBox(
-                    width: double.infinity,
-                    child: PremiumPrimaryButton(
-                      label: 'Walk Away',
-                      icon: CupertinoIcons.xmark,
-                      borderColor: Colors.white.withValues(alpha: 0.35),
-                      foregroundColor: Colors.white,
-                      onPressed: () => NativeBridge.goHome(),
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-
-                  // ── Wallet balance pill ──
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                    child: Consumer<AppState>(
-                      builder: (context, state, _) {
-                        return Text(
-                          'Wallet Balance: \$${state.walletBalance.toStringAsFixed(2)}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.2,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context2, anim, secondaryAnim, child) {
-        return FadeTransition(
-          opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-          child: child,
-        );
-      },
-      transitionDuration: const Duration(milliseconds: 300),
-    );
-  }
+  // ── Block Overlay method removed ──
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      body: SafeArea(
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF151522), Color(0xFF0D0D16)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
@@ -245,7 +117,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const SizedBox(height: 16),
 
               // ── Permission banner ──
-              if (!_hasPermission) _PermissionBanner(isDark: isDark),
+              _hasPermission
+                  ? _ShieldActivePill(isDark: isDark)
+                  : _PermissionBanner(isDark: isDark),
 
               // ── Subtitle ──
               Text(
@@ -260,21 +134,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               // ── Dashboard card ──
               const DashboardCard(),
 
-              const Spacer(),
-
-              // ── Preview button ──
-              Center(
-                child: PremiumPrimaryButton(
-                  label: 'Preview App Block',
-                  icon: CupertinoIcons.eye_fill,
-                  onPressed: () => _showBlockOverlay(context),
+              // ── Target Apps Header ──
+              Text(
+                'Target Apps',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.5,
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // ── Target Apps List ──
+              const _TargetAppsList(),
 
               const SizedBox(height: 64),
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -294,12 +171,10 @@ class _PermissionBanner extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF3A1C1C) : const Color(0xFFFFF0EE),
+        color: Colors.red.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark
-              ? Colors.redAccent.withValues(alpha: 0.3)
-              : Colors.redAccent.withValues(alpha: 0.15),
+          color: Colors.redAccent.withValues(alpha: 0.5),
         ),
       ),
       child: Row(
@@ -353,6 +228,108 @@ class _PermissionBanner extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ShieldActivePill extends StatelessWidget {
+  final bool isDark;
+  const _ShieldActivePill({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1B3320) : const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(
+          color: isDark
+              ? Colors.green.withValues(alpha: 0.3)
+              : Colors.green.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            CupertinoIcons.checkmark_shield_fill,
+            color: isDark ? Colors.greenAccent : Colors.green,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Shield Active',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: isDark ? Colors.greenAccent : Colors.green.shade800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TargetAppsList extends StatelessWidget {
+  const _TargetAppsList();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final state = context.watch<AppState>();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Column(
+        children: state.trackedApps.entries.map((entry) {
+          final isLast = entry.key == state.trackedApps.keys.last;
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      entry.key,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    CupertinoSwitch(
+                      value: entry.value,
+                      onChanged: (val) {
+                        context.read<AppState>().toggleAppTracking(entry.key, val);
+                      },
+                      activeTrackColor: theme.colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+              if (!isLast)
+                Padding(
+                  padding: const EdgeInsets.only(left: 20),
+                  child: Divider(
+                    height: 1,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.black.withValues(alpha: 0.1),
+                  ),
+                ),
+            ],
+          );
+        }).toList(),
       ),
     );
   }

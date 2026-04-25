@@ -42,6 +42,7 @@ class AppMonitorService : AccessibilityService() {
 
                 Log.d(TAG, "INTERCEPTING blocked app: $packageName")
                 val intent = Intent(this, MainActivity::class.java).apply {
+                    action = "com.dopaminetax.BLOCK"
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 }
                 startActivity(intent)

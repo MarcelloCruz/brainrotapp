@@ -11,7 +11,9 @@ class AppTheme {
   AppTheme._();
 
   // ── Core palette ──────────────────────────────────────────────────────────
-  static const Color _accentBlue = Color(0xFF007AFF);
+  static const Color _accentBlue = Color(0xFF1D4ED8); // Vibrant Neon Blue
+  static const Color _appBackground = Color(0xFF0D0D16); // Deep midnight blue
+  static const Color _neonGreen = Color(0xFF39FF14);
   static const Color _pureWhite = Color(0xFFFFFFFF);
   static const Color _pureBlack = Color(0xFF000000);
   static const Color _grey100 = Color(0xFFF5F5F7);
@@ -113,7 +115,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: _pureBlack,
+      scaffoldBackgroundColor: _appBackground,
       colorScheme: const ColorScheme.dark(
         primary: _accentBlue,
         onPrimary: _pureWhite,
@@ -127,7 +129,7 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         elevation: 0,
         scrolledUnderElevation: 0,
-        backgroundColor: _pureBlack,
+        backgroundColor: Colors.transparent,
         foregroundColor: _pureWhite,
         centerTitle: true,
         titleTextStyle: TextStyle(
@@ -191,14 +193,14 @@ class AppTheme {
     return TextTheme(
       displayLarge: TextStyle(
         fontSize: 34,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         letterSpacing: -1.0,
         color: primary,
         height: 1.15,
       ),
       headlineMedium: TextStyle(
         fontSize: 28,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         letterSpacing: -0.8,
         color: primary,
         height: 1.2,
@@ -212,7 +214,7 @@ class AppTheme {
       ),
       titleLarge: TextStyle(
         fontSize: 20,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w800,
         letterSpacing: -0.4,
         color: primary,
       ),
