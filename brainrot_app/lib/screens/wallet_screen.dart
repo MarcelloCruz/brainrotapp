@@ -3,17 +3,79 @@ import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
 import '../widgets/premium_primary_button.dart';
 import '../providers/app_state.dart';
+import '../services/stripe_service.dart';
 
 /// The Apple-inspired Wallet screen.
-/// Includes an available balance, quick top-up options, and recent activity.
-class WalletScreen extends StatelessWidget {
+/// Includes an available balance, selectable top-up amounts, and recent activity.
+class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
+
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  int _selectedIndex = 0;
+  bool _isDepositing = false;
+
+  /// Handles the full Stripe deposit flow:
+  /// 1. Converts the selected amount to cents.
+  /// 2. Calls the Edge Function with the amount.
+  /// 3. Presents the Stripe PaymentSheet.
+  /// 4. On success, credits the wallet via AppState.topUpWallet().
+  Future<void> _handleDeposit() async {
+    if (_isDepositing) return;
+    setState(() => _isDepositing = true);
+
+    final state = context.read<AppState>();
+    final amounts = [state.taxAmount * 10, state.taxAmount * 20, state.taxAmount * 40];
+    final selectedAmount = amounts[_selectedIndex];
+    final amountInCents = (selectedAmount * 100).round();
+
+    try {
+      final success = await StripeService.presentPaymentSheet(
+        amountInCents: amountInCents,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        await state.topUpWallet(selectedAmount);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Successfully deposited ${state.formatPrice(selectedAmount)}',
+            ),
+            backgroundColor: CupertinoColors.activeGreen,
+          ),
+        );
+      }
+      // If !success, user cancelled — silently dismiss.
+    } catch (e) {
+      debugPrint('WalletScreen: Deposit error — $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Deposit failed. Please try again.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDepositing = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = context.watch<AppState>();
     final isDark = theme.brightness == Brightness.dark;
+    final amounts = [state.taxAmount * 10, state.taxAmount * 20, state.taxAmount * 40];
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -61,24 +123,41 @@ class WalletScreen extends StatelessWidget {
               const SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _TopUpPill(amount: state.taxAmount * 10, currencySymbol: state.currencySymbol, isDark: isDark),
-                  const SizedBox(width: 12),
-                  _TopUpPill(amount: state.taxAmount * 20, currencySymbol: state.currencySymbol, isDark: isDark),
-                  const SizedBox(width: 12),
-                  _TopUpPill(amount: state.taxAmount * 40, currencySymbol: state.currencySymbol, isDark: isDark),
-                ],
+                children: List.generate(amounts.length, (index) {
+                  return Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(
+                        left: index == 0 ? 0 : 6,
+                        right: index == amounts.length - 1 ? 0 : 6,
+                      ),
+                      child: _TopUpPill(
+                        amount: amounts[index],
+                        currencySymbol: state.currencySymbol,
+                        isDark: isDark,
+                        isSelected: _selectedIndex == index,
+                        onTap: () => setState(() => _selectedIndex = index),
+                      ),
+                    ),
+                  );
+                }),
               ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: PremiumPrimaryButton(
-                  label: 'Deposit via Apple/Google Pay',
-                  icon: CupertinoIcons.money_dollar_circle_fill,
-                  onPressed: () {
-                    // TODO: integrate with payment gateway
-                  },
-                ),
+                child: _isDepositing
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                          ),
+                        ),
+                      )
+                    : PremiumPrimaryButton(
+                        label: 'Deposit ${state.formatPrice(amounts[_selectedIndex])}',
+                        icon: CupertinoIcons.money_dollar_circle_fill,
+                        onPressed: _handleDeposit,
+                      ),
               ),
               const SizedBox(height: 48),
 
@@ -115,33 +194,53 @@ class _TopUpPill extends StatelessWidget {
   final double amount;
   final String currencySymbol;
   final bool isDark;
+  final bool isSelected;
+  final VoidCallback onTap;
 
-  const _TopUpPill({required this.amount, required this.currencySymbol, required this.isDark});
+  const _TopUpPill({
+    required this.amount,
+    required this.currencySymbol,
+    required this.isDark,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          context.read<AppState>().addFunds(amount);
-        },
-        borderRadius: BorderRadius.circular(100),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.black.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(100),
+    final accentColor = const Color(0xFF1D4ED8);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(100),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? accentColor.withValues(alpha: 0.2)
+              : isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.black.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+            color: isSelected
+                ? accentColor.withValues(alpha: 0.6)
+                : Colors.transparent,
+            width: 1.5,
           ),
-          child: Center(
-            child: Text(
-              '$currencySymbol${amount % 1 == 0 ? amount.toInt() : amount.toStringAsFixed(2)}',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.black,
-              ),
+        ),
+        child: Center(
+          child: Text(
+            '$currencySymbol${amount % 1 == 0 ? amount.toInt() : amount.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              color: isSelected
+                  ? accentColor
+                  : isDark
+                      ? Colors.white
+                      : Colors.black,
             ),
           ),
         ),

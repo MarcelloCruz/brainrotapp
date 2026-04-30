@@ -13,6 +13,7 @@ class AppTheme {
   // ── Core palette ──────────────────────────────────────────────────────────
   static const Color _accentBlue = Color(0xFF1D4ED8); // Vibrant Neon Blue
   static const Color _appBackground = Color(0xFF0D0D16); // Deep midnight blue
+  // ignore: unused_field
   static const Color _neonGreen = Color(0xFF39FF14);
   static const Color _pureWhite = Color(0xFFFFFFFF);
   static const Color _pureBlack = Color(0xFF000000);

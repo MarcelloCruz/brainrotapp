@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_theme.dart';
+
 import '../providers/app_state.dart';
 
 /// A premium dashboard card displaying key stats in a clean row layout.
@@ -28,17 +28,56 @@ class DashboardCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // ── Time Saved ──
+          // ── Time Saved / Allowance ──
           Expanded(
-            child: _StatColumn(
-              label: 'Daily Allowance Used',
-              value: '${state.timeUsedMins}m / ${state.dailyAllowanceMins}m',
-              theme: theme,
-              bottomWidget: _ProgressBar(
-                used: state.timeUsedMins,
-                total: state.dailyAllowanceMins,
-              ),
-            ),
+            child: state.isTaxPaid
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.greenAccent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(
+                            color: Colors.greenAccent.withValues(alpha: 0.5),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.greenAccent.withValues(alpha: 0.2),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.lock_open, color: Colors.greenAccent, size: 16),
+                            SizedBox(width: 8),
+                            Text(
+                              'Unlimited Access',
+                              style: TextStyle(
+                                color: Colors.greenAccent,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                : _StatColumn(
+                    label: 'Daily Allowance Used',
+                    value: '${state.timeUsedMins}m / ${state.dailyAllowanceMins}m',
+                    theme: theme,
+                    bottomWidget: _ProgressBar(
+                      used: state.timeUsedMins,
+                      total: state.dailyAllowanceMins,
+                      isTaxPaid: state.isTaxPaid,
+                    ),
+                  ),
           ),
           // ── Divider ──
           Container(
@@ -61,7 +100,6 @@ class DashboardCard extends StatelessWidget {
     );
   }
 }
-
 class _StatColumn extends StatelessWidget {
   final String label;
   final String value;
@@ -111,11 +149,31 @@ class _StatColumn extends StatelessWidget {
 class _ProgressBar extends StatelessWidget {
   final int used;
   final int total;
+  final bool isTaxPaid;
 
-  const _ProgressBar({required this.used, required this.total});
+  const _ProgressBar({required this.used, required this.total, this.isTaxPaid = false});
 
   @override
   Widget build(BuildContext context) {
+    if (isTaxPaid) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 8,
+          decoration: BoxDecoration(
+            color: Colors.greenAccent,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.greenAccent.withValues(alpha: 0.8),
+                blurRadius: 10,
+                spreadRadius: 2,
+              )
+            ],
+          ),
+        ),
+      );
+    }
+
     final double progress = (total > 0) ? (used / total).clamp(0.0, 1.0) : 0.0;
     Color color;
     if (progress < 0.5) {
@@ -131,7 +189,7 @@ class _ProgressBar extends StatelessWidget {
       child: LinearProgressIndicator(
         value: progress,
         backgroundColor: Colors.white.withValues(alpha: 0.1),
-        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF39FF14)),
+        valueColor: AlwaysStoppedAnimation<Color>(color),
         minHeight: 8,
       ),
     );

@@ -129,7 +129,62 @@
 - Re-styled the `LinearProgressIndicator` to use a rounded thick bar with a neon green glow.
 - Modernized `PermissionBanner` with a sleek dark card and thin glowing red border.
 
+### iOS Native Layer — Phase 1 (Completed)
+- Begun integration of Apple's FamilyControls framework.
+- Updated `AppDelegate.swift` to handle `requestScreenTimePermission` via MethodChannel `com.dopaminetax/native`.
+- Implemented `AuthorizationCenter.shared.requestAuthorization(for: .individual)` to prompt the user for Screen Time access.
+- Added `requestIOSScreenTimePermission()` to `NativeBridge`.
+- **Note**: Developer must manually add the "Family Controls" entitlement in Xcode ("Signing & Capabilities").
+
+### iOS Native Layer — Phase 2 (Completed)
+- Implemented `ScreenTimeManager.swift` to handle `ManagedSettingsStore` and persist selection state.
+- Created `FamilyPickerView.swift` to wrap SwiftUI `FamilyActivityPicker`.
+- Wired platform-aware button in `HomeScreen` to invoke native Picker.
+- *(Note: Actually running the Picker on device currently blocked by Apple provisioning profile restrictions).*
+
+### Android Native Layer — Anti-Reels Deflector (Completed)
+- Added `typeWindowContentChanged` to `accessibility_service_config.xml`.
+- Updated `AppMonitorService.kt` with recursive UI node scanning (`findAndDeflectReels`).
+- Identifies when the "Reels" tab is selected (`isSelected == true`).
+- Deflects user by simulating a click on the "Home" tab to exit immersive mode.
+- Deep-links the user straight to Instagram Direct Messages via `ig://direct_v2` (or `instagram://direct-inbox` fallback).
+
 ### Next Steps
 - Add YouTube Shorts (`com.google.android.youtube`) to the blocked packages list.
 - Implement usage-time tracking inside `AppMonitorService` (start/stop timer per monitored package).
-- Implement iOS native layer (Screen Time API / Family Controls).
+
+### TikTok MVP Loop (Completed)
+- **Pivot**: Dropped iOS, YouTube, and Instagram for a focused TikTok-only MVP.
+- **Android — AppMonitorService.kt**:
+  - Targeted only TikTok packages: `com.zhiliaoapp.musically` (global) and `com.ss.android.ugc.trill` (regional).
+  - Removed `com.instagram.android` from `BLOCKED_PACKAGES`.
+  - Commented out the entire IG Reels Anti-Deflector logic (preserved as documentation block per project rules).
+  - Implemented real foreground time tracking: records timestamp when TikTok enters foreground, accumulates elapsed minutes to `SharedPreferences` key `flutter.timeUsedMins` when user leaves.
+  - Conditional blocking: only fires the block intent when accumulated time ≥ 60 minutes AND user has not paid for the day.
+- **Android — accessibility_service_config.xml**:
+  - Removed `typeWindowContentChanged` (was only for IG Reels node scanning).
+  - Set `canRetrieveWindowContent="false"` since UI tree scanning is disabled.
+- **Flutter — app_state.dart**:
+  - `_trackedApps` reduced to `{'TikTok': true}`.
+  - Added `loadPersistedState()` — hydrates `isUnlockedForToday` and `timeUsedMins` from SharedPreferences on startup.
+  - Added `syncTimeFromNative()` — re-reads `timeUsedMins` from SharedPreferences when app resumes.
+  - Added `updateTimeUsed(int)` — accepts pushed time updates from MethodChannel.
+  - `resetDebugState()` now resets `timeUsedMins = 0` (was 60) and persists both flags.
+  - Removed Instagram mock transaction.
+- **Flutter — main.dart**:
+  - Made `main()` async; calls `appState.loadPersistedState()` before `runApp`.
+  - Added MethodChannel handler for `updateUsageTime` to receive live time pushes from Kotlin.
+  - Switched from `ChangeNotifierProvider(create:)` to `ChangeNotifierProvider.value(value:)`.
+- **Flutter — home_screen.dart**:
+  - `didChangeAppLifecycleState(resumed)` now calls `syncTimeFromNative()` to refresh dashboard.
+- **Bonus fixes** (resolved pre-existing warnings):
+  - `dashboard_card.dart`: Removed unused `app_theme.dart` import. Progress bar now uses the dynamic `color` variable (green/yellow/red) instead of hardcoded neon green.
+  - `app_theme.dart`: Added `// ignore: unused_field` for `_neonGreen` design system palette constant.
+- `flutter analyze` — **zero issues**.
+
+### Next Steps (Post-MVP)
+- Re-enable Instagram Reels deflection and add YouTube Shorts when ready to expand.
+- Add a persistent foreground notification to keep the AccessibilityService alive against battery optimization.
+- Implement midnight auto-reset for `isUnlockedForToday` and `timeUsedMins`.
+- Pursue TestFlight-ready iOS builds once provisioning is resolved.
+

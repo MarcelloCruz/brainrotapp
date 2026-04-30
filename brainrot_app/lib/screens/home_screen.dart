@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -5,7 +6,9 @@ import '../providers/app_state.dart';
 import '../services/native_bridge.dart';
 import '../widgets/dashboard_card.dart';
 import 'wallet_screen.dart';
-import 'settings_screen.dart';
+import 'dev_panel.dart';
+import 'profile_bottom_sheet.dart';
+
 
 /// Minimalist home screen for Dopamine Tax.
 ///
@@ -26,6 +29,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkPermission();
+    // Start polling native layer for live usage time updates.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppState>().startLiveSync();
+      _checkBlockTrigger();
+    });
+  }
+
+  Future<void> _checkBlockTrigger() async {
+    final appState = context.read<AppState>();
+    final isBlocked = await NativeBridge.checkBlockTrigger();
+    if (isBlocked && !appState.isTaxPaid) {
+      if (mounted) {
+        Navigator.of(context).pushNamed('/block');
+        await NativeBridge.clearBlockTrigger();
+      }
+    }
   }
 
   @override
@@ -39,11 +58,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _checkPermission();
+      // Resume live sync when app enters foreground.
+      if (mounted) {
+        context.read<AppState>().startLiveSync();
+        _checkBlockTrigger();
+      }
+    } else if (state == AppLifecycleState.paused) {
+      // Stop polling when app goes to background.
+      context.read<AppState>().stopLiveSync();
     }
   }
 
   Future<void> _checkPermission() async {
-    final granted = await NativeBridge.checkAccessibilityPermission();
+    bool granted = false;
+    if (Platform.isIOS) {
+      granted = await NativeBridge.checkIOSScreenTimePermission();
+    } else {
+      granted = await NativeBridge.checkAccessibilityPermission();
+    }
     if (mounted) setState(() => _hasPermission = granted);
   }
 
@@ -78,6 +110,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // ── Profile / Account ──
+                    IconButton(
+                      icon: const Icon(Icons.account_circle_outlined, size: 28),
+                      onPressed: () => ProfileBottomSheet.show(context),
+                    ),
+                    const SizedBox(width: 4),
+
+                    // ── Wallet Icon ──
                     IconButton(
                       icon: const Icon(CupertinoIcons.creditcard, size: 28),
                       onPressed: () {
@@ -89,13 +129,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       },
                     ),
                     const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(CupertinoIcons.gear_solid, size: 28),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          CupertinoPageRoute(
-                            builder: (_) => const SettingsScreen(),
-                          ),
+
+                    // ── Dev Tools (God Mode) ──
+                    Consumer<AppState>(
+                      builder: (context, state, child) {
+                        if (!state.isDev) return const SizedBox.shrink();
+                        return IconButton(
+                          icon: const Icon(Icons.terminal, size: 28, color: Colors.greenAccent),
+                          onPressed: () => DevPanel.show(context),
                         );
                       },
                     ),
@@ -119,7 +160,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               // ── Permission banner ──
               _hasPermission
                   ? _ShieldActivePill(isDark: isDark)
-                  : _PermissionBanner(isDark: isDark),
+                  : _PermissionBanner(
+                      isDark: isDark,
+                      onTap: () async {
+                        if (Platform.isIOS) {
+                          final success = await NativeBridge.requestIOSScreenTimePermission();
+                          if (success) {
+                            _checkPermission();
+                          }
+                        } else {
+                          NativeBridge.openAccessibilitySettings();
+                        }
+                      },
+                    ),
 
               // ── Subtitle ──
               Text(
@@ -145,7 +198,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const SizedBox(height: 16),
 
               // ── Target Apps List ──
-              const _TargetAppsList(),
+              Platform.isIOS
+                  ? const _IOSTargetAppsButton()
+                  : const _TargetAppsList(),
 
               const SizedBox(height: 64),
             ],
@@ -163,7 +218,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
 class _PermissionBanner extends StatelessWidget {
   final bool isDark;
-  const _PermissionBanner({required this.isDark});
+  final VoidCallback onTap;
+  const _PermissionBanner({required this.isDark, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +266,7 @@ class _PermissionBanner extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           GestureDetector(
-            onTap: () => NativeBridge.openAccessibilitySettings(),
+            onTap: onTap,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
@@ -330,6 +386,26 @@ class _TargetAppsList extends StatelessWidget {
             ],
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+class _IOSTargetAppsButton extends StatelessWidget {
+  const _IOSTargetAppsButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: CupertinoButton.filled(
+        onPressed: () {
+          NativeBridge.selectIOSAppsToBlock();
+        },
+        child: const Text(
+          'Select Apps to Block',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

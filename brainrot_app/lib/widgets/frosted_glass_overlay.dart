@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/app_state.dart';
@@ -12,7 +11,11 @@ import 'premium_primary_button.dart';
 ///
 /// Uses [BackdropFilter] with a Gaussian blur to create a premium iOS-style
 /// frosted glass effect over whatever content is behind it.
-class FrostedGlassOverlay extends StatelessWidget {
+///
+/// The "Pay" button performs an **instant wallet deduction** — no Stripe
+/// checkout. If the balance is insufficient, a SnackBar prompts the user
+/// to top up via the Profile sheet.
+class FrostedGlassOverlay extends StatefulWidget {
   /// Called when the overlay should be dismissed.
   final VoidCallback? onDismiss;
 
@@ -30,13 +33,79 @@ class FrostedGlassOverlay extends StatelessWidget {
   });
 
   @override
+  State<FrostedGlassOverlay> createState() => _FrostedGlassOverlayState();
+}
+
+class _FrostedGlassOverlayState extends State<FrostedGlassOverlay> {
+  bool _isProcessing = false;
+
+  /// Instant wallet deduction flow:
+  /// 1. Check if wallet balance >= tax amount.
+  /// 2. If yes, deduct from Supabase, flip isTaxPaid, dismiss overlay.
+  /// 3. If no, show an "Insufficient funds" SnackBar.
+  Future<void> _handleInstantPay() async {
+    if (_isProcessing) return;
+
+    final state = context.read<AppState>();
+
+    if (state.walletBalance < state.taxAmount) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Insufficient funds. Please top up in your profile.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final success = await state.payTax();
+
+      if (!mounted) return;
+
+      if (success) {
+        if (widget.onDismiss != null) {
+          widget.onDismiss!();
+        } else {
+          Navigator.of(context).pop();
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to process payment. Please try again.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('FrostedGlassOverlay: Payment error — $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment failed. Please try again.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Material(
       type: MaterialType.transparency,
       child: GestureDetector(
-        onTap: onDismiss,
+        onTap: widget.onDismiss,
         child: SizedBox.expand(
           child: Stack(
             children: [
@@ -44,10 +113,10 @@ class FrostedGlassOverlay extends StatelessWidget {
               Positioned.fill(
                 child: BackdropFilter(
                   filter: ImageFilter.blur(
-                    sigmaX: blurSigma,
-                    sigmaY: blurSigma,
+                    sigmaX: widget.blurSigma,
+                    sigmaY: widget.blurSigma,
                   ),
-                  child: Container(color: tintColor),
+                  child: Container(color: widget.tintColor),
                 ),
               ),
 
@@ -101,39 +170,22 @@ class FrostedGlassOverlay extends StatelessWidget {
                             ),
                             const SizedBox(height: 48),
 
-                            // ── Pay button (primary action) ──
+                            // ── Pay button (instant wallet deduction) ──
                             SizedBox(
                               width: double.infinity,
-                              child: PremiumPrimaryButton(
-                                label: 'Pay ${context.read<AppState>().formatPrice(context.read<AppState>().taxAmount)} (Unlocks till midnight)',
-                                icon: CupertinoIcons.creditcard,
-                                onPressed: () async {
-                                  final state = context.read<AppState>();
-                                  if (state.walletBalance >= state.taxAmount) {
-                                    await state.payTax();
-                                    if (context.mounted) {
-                                      if (onDismiss != null) {
-                                        onDismiss!();
-                                      } else {
-                                        SystemNavigator.pop();
-                                      }
-                                    }
-                                  } else {
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Insufficient Funds. Please top up.',
-                                          ),
-                                          backgroundColor: Colors.redAccent,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                },
-                              ),
+                              child: _isProcessing
+                                  ? const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    )
+                                  : PremiumPrimaryButton(
+                                      label:
+                                          'Pay ${context.read<AppState>().formatPrice(context.read<AppState>().taxAmount)} (Unlocks till midnight)',
+                                      icon: CupertinoIcons.creditcard,
+                                      onPressed: _handleInstantPay,
+                                    ),
                             ),
                             const SizedBox(height: 14),
 
@@ -147,7 +199,16 @@ class FrostedGlassOverlay extends StatelessWidget {
                                   alpha: 0.35,
                                 ),
                                 foregroundColor: Colors.white,
-                                onPressed: () => NativeBridge.goHome(),
+                                onPressed: _isProcessing
+                                    ? null
+                                    : () {
+                                        if (widget.onDismiss != null) {
+                                          widget.onDismiss!();
+                                        } else {
+                                          Navigator.of(context).pop();
+                                        }
+                                        NativeBridge.goHome();
+                                      },
                               ),
                             ),
                             const SizedBox(height: 36),
